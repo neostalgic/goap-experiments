@@ -26,6 +26,16 @@ class State extends Set<StateEntry<StateEntryType>> {
         return this.getRawSet().isSupersetOf(other.getRawSet());
     }
 
+    stateDifference(other: State): State {
+      const newRawSet = this.getRawSet().difference(other.getRawSet());
+      const newStateArray = Array.from(newRawSet).map((rawValue) => {
+        const [name, value] = rawValue.split("=");
+        return new StateEntry(name, value);
+      });
+
+      return new State(newStateArray);
+    }
+
 }
 
 type StateEntryType = boolean | string;
@@ -71,9 +81,9 @@ const WORLD_STATE: State = new State([
 const EXAMPLE_ACTIONS: Array<Action> = [
   {
     name: "SHOOT",
-    preconditions: [new Precondition("HAS_AMMO", true)],
-    effects: [new StateEntry("HURT_TARGET", true)],
-    priority: 50,
+    preconditions: [new Precondition("HAS_AMMO", true)], 
+    effects: [new StateEntry("HURT_TARGET", true)], 
+    priority: 50, 
   },
   {
     name: "SHOOT_FROM_COVER",
@@ -82,13 +92,13 @@ const EXAMPLE_ACTIONS: Array<Action> = [
       new Precondition("IN_COVER", true),
     ],
     effects: [new StateEntry("HURT_TARGET", true)],
-    priority: 100,
+    priority: 75,
   },
   {
     name: "RELOAD",
     preconditions: [new Precondition("HAS_AMMO", false)],
     effects: [new StateEntry("HAS_AMMO", true)],
-    priority: 50,
+    priority: 25,
   },
   {
     name: "RELOAD_FROM_COVER",
@@ -97,7 +107,7 @@ const EXAMPLE_ACTIONS: Array<Action> = [
       new Precondition("HAS_AMMO", false),
     ],
     effects: [new StateEntry("HAS_AMMO", true)],
-    priority: 75,
+    priority: 50,
   },
   {
     name: "GOTO_COVER",
@@ -106,7 +116,7 @@ const EXAMPLE_ACTIONS: Array<Action> = [
         new Precondition("IN_COVER", false),
     ],
     effects: [new StateEntry("IN_COVER", true)],
-    priority: 75,
+    priority: 50,
   },
 ];
 
@@ -128,13 +138,13 @@ function printPath(node: WorldStateNode) {
 }
 
 
-function findNeighbors(node: WorldStateNode): Array<WorldStateNode> {
+function findNeighbors(node: WorldStateNode, goal: State): Array<WorldStateNode> {
   return EXAMPLE_ACTIONS
     .filter((action) => action.name !== node.edge)
     .map((action) => {
       const actionCost = 100 - action.priority;
-      const distanceToGoal =
-        new Set(node.state).difference(new Set(action.effects)).size * 10;
+      const actionSet = new State(action.effects);
+      const distanceToGoal = goal.stateDifference(actionSet).size;
       const totalCost = actionCost + distanceToGoal;
 
       const stateMap = new Map<string, StateEntry<StateEntryType>>();
@@ -194,7 +204,7 @@ function findPath(
       return current;
     }
 
-    const neighbors = findNeighbors(current);
+    const neighbors = findNeighbors(current, goal);
     neighbors.forEach((neighbor) => {
       if (closed.has(neighbor.state)) {
         return;
